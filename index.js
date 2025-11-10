@@ -8,7 +8,7 @@ const port = 3000
 app.use(cors());
 app.use(express.json());
 
-const uri = "mongodb+srv://StudyMateAdmin:Em9TJ5RZFm6Txu1M@cluster0.8ev9gxa.mongodb.net/?appName=Cluster0";
+//const uri = "mongodb+srv://StudyMateAdmin:Em9TJ5RZFm6Txu1M@cluster0.8ev9gxa.mongodb.net/?appName=Cluster0";
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
