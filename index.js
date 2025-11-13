@@ -9,9 +9,9 @@ const port = 5000;
 app.use(
   cors({
     origin: [
-      "http://localhost:5173", // local dev (if using Vite)
-      "http://localhost:3000", // for CRA if needed
-      "https://studymate-auth-firebase.web.app", // your Firebase domain
+      "http://localhost:5173", 
+      "http://localhost:3000", 
+      "https://studymate-auth-firebase.web.app", 
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
@@ -209,7 +209,7 @@ async function run() {
           });
         }
 
-        // Check if request already exists
+        
         const existingRequest = await partnerRequestsCol.findOne({
           partnerId: partnerId,
           userEmail: userEmail,
