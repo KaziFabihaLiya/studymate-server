@@ -1,3 +1,5 @@
 node_modules
 .env
 studymate-auth-firebase-firebase-adminsdk-fbsvc-e6508d285b.json
+vercel.json
+.vercel

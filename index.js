@@ -6,7 +6,18 @@ const app = express();
 const port = 5000;
 
 //Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173", // local dev (if using Vite)
+      "http://localhost:3000", // for CRA if needed
+      "https://studymate-auth-firebase.web.app", // your Firebase domain
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.8ev9gxa.mongodb.net/?appName=Cluster0`;
@@ -93,7 +104,7 @@ async function run() {
       let result = null;
 
       try {
-        // Try ObjectId first (for auto-generated IDs)
+       
         const objectId = new ObjectId(id);
         result = await profileCol.findOne({ _id: objectId });
         console.log("ObjectId query result:", result ? "Found" : "Not found");
@@ -101,7 +112,7 @@ async function run() {
         console.log("Invalid ObjectId, trying string query:", err.message);
       }
 
-      // Fallback: If no result or invalid ObjectId, try as string
+      
       if (!result) {
         result = await profileCol.findOne({ _id: id });
         console.log("String query result:", result ? "Found" : "Not found");
@@ -246,7 +257,7 @@ async function run() {
 
         console.log("Update result:", updateResult);
 
-        // Create partner request record
+
         const requestData = {
           partnerId: partnerId,
           partnerName: partnerProfile.name,
@@ -279,7 +290,7 @@ async function run() {
       }
     });
 
-    // OPTIONAL: Get partner requests for a user
+    // Get partner requests for a user
     app.get("/myPartnerRequests", async (req, res) => {
       const email = req.query.email;
       try {
@@ -297,7 +308,7 @@ async function run() {
       }
     });
 
-    await client.db("admin").command({ ping: 1 });
+    //await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
