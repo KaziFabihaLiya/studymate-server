@@ -38,42 +38,42 @@ async function run() {
     const testimonialCol = DB.collection("testimonials");
     const partnerRequestsCol = DB.collection("partnerRequests");
 
-    app.get("/AllPartnerProfile", async (req, res) => {
-      const { sortOrder = "desc", search = "" } = req.query;
-      let result = await profileCol.find().toArray();
+    // app.get("/AllPartnerProfile", async (req, res) => {
+    //   const { sortOrder = "desc", search = "" } = req.query;
+    //   let result = await profileCol.find().toArray();
 
-      // Filter by search if provided
-      if (search.trim()) {
-        result = result.filter((partner) =>
-          partner.subject.toLowerCase().includes(search.trim().toLowerCase())
-        );
-      }
+    //   // Filter by search if provided
+    //   if (search.trim()) {
+    //     result = result.filter((partner) =>
+    //       partner.subject.toLowerCase().includes(search.trim().toLowerCase())
+    //     );
+    //   }
 
-      // Add numeric experience level
-      result = result.map((partner) => ({
-        ...partner,
-        expLevelNum:
-          partner.experienceLevel === "Beginner"
-            ? 1
-            : partner.experienceLevel === "Intermediate"
-            ? 2
-            : partner.experienceLevel === "Advanced"
-            ? 3
-            : partner.experienceLevel === "Expert"
-            ? 4
-            : 0,
-      }));
+    //   // Add numeric experience level
+    //   result = result.map((partner) => ({
+    //     ...partner,
+    //     expLevelNum:
+    //       partner.experienceLevel === "Beginner"
+    //         ? 1
+    //         : partner.experienceLevel === "Intermediate"
+    //         ? 2
+    //         : partner.experienceLevel === "Advanced"
+    //         ? 3
+    //         : partner.experienceLevel === "Expert"
+    //         ? 4
+    //         : 0,
+    //   }));
 
-      // Sort by expLevelNum
-      const direction = sortOrder === "asc" ? 1 : -1;
-      result.sort((a, b) => direction * (a.expLevelNum - b.expLevelNum));
+    //   // Sort by expLevelNum
+    //   const direction = sortOrder === "asc" ? 1 : -1;
+    //   result.sort((a, b) => direction * (a.expLevelNum - b.expLevelNum));
 
-      // Remove temp field
-      result = result.map(({ expLevelNum, ...rest }) => rest);
+    //   // Remove temp field
+    //   result = result.map(({ expLevelNum, ...rest }) => rest);
 
-      console.log(result);
-      res.send(result);
-    });
+    //   console.log(result);
+    //   res.send(result);
+    // });
 
     app.get("/testimonials", async (req, res) => {
       const result = await testimonialCol.find().toArray();
@@ -193,6 +193,265 @@ async function run() {
       const result = await profileCol.find({ email: email }).toArray();
       res.send(result);
     });
+
+
+    // Add these new endpoints to your existing index.js
+
+// Get dashboard statistics for a user
+app.get("/dashboard-stats", async (req, res) => {
+  const email = req.query.email;
+
+  try {
+    // Get user's profiles
+    const userProfiles = await profileCol.find({ email: email }).toArray();
+
+    // Get user's partner requests
+    const requests = await partnerRequestsCol
+      .find({ userEmail: email })
+      .toArray();
+
+    // Calculate total connections
+    const totalConnections = userProfiles.reduce(
+      (sum, profile) => sum + (profile.partnerCount || 0),
+      0
+    );
+
+    // Calculate total views (you can implement view tracking)
+    const totalViews = userProfiles.reduce(
+      (sum, profile) => sum + (profile.views || 0),
+      0
+    );
+
+    res.send({
+      success: true,
+      stats: {
+        totalProfiles: userProfiles.length,
+        totalRequests: requests.length,
+        totalConnections: totalConnections,
+        profileViews: totalViews,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching dashboard stats:", error);
+    res.status(500).send({
+      success: false,
+      message: "Error fetching dashboard statistics",
+      error: error.message,
+    });
+  }
+});
+
+// Get admin statistics (all platform data)
+app.get("/admin-stats", async (req, res) => {
+  try {
+    // Get all profiles
+    const allProfiles = await profileCol.find().toArray();
+
+    // Get unique users
+    const uniqueEmails = [...new Set(allProfiles.map((p) => p.email))];
+
+    // Calculate total connections
+    const totalConnections = allProfiles.reduce(
+      (sum, profile) => sum + (profile.partnerCount || 0),
+      0
+    );
+
+    // Get all partner requests
+    const allRequests = await partnerRequestsCol.find().toArray();
+
+    // Subject distribution
+    const subjectCounts = {};
+    allProfiles.forEach((profile) => {
+      const subject = profile.subject || "Other";
+      subjectCounts[subject] = (subjectCounts[subject] || 0) + 1;
+    });
+
+    // Experience level distribution
+    const experienceCounts = {
+      Beginner: 0,
+      Intermediate: 0,
+      Advanced: 0,
+      Expert: 0,
+    };
+
+    allProfiles.forEach((profile) => {
+      if (experienceCounts.hasOwnProperty(profile.experienceLevel)) {
+        experienceCounts[profile.experienceLevel]++;
+      }
+    });
+
+    // Study mode distribution
+    const modeCounts = {
+      Online: 0,
+      Offline: 0,
+      Hybrid: 0,
+    };
+
+    allProfiles.forEach((profile) => {
+      if (modeCounts.hasOwnProperty(profile.studyMode)) {
+        modeCounts[profile.studyMode]++;
+      }
+    });
+
+    res.send({
+      success: true,
+      stats: {
+        totalUsers: uniqueEmails.length,
+        totalProfiles: allProfiles.length,
+        totalConnections: totalConnections,
+        totalRequests: allRequests.length,
+      },
+      distributions: {
+        subjects: subjectCounts,
+        experience: experienceCounts,
+        modes: modeCounts,
+      },
+      recentProfiles: allProfiles.slice(-10).reverse(),
+    });
+  } catch (error) {
+    console.error("Error fetching admin stats:", error);
+    res.status(500).send({
+      success: false,
+      message: "Error fetching admin statistics",
+      error: error.message,
+    });
+  }
+});
+
+// Track profile views (optional enhancement)
+app.post("/track-view/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const objectId = new ObjectId(id);
+    const result = await profileCol.updateOne(
+      { _id: objectId },
+      { $inc: { views: 1 } }
+    );
+
+    res.send({
+      success: true,
+      message: "View tracked successfully",
+      result,
+    });
+  } catch (error) {
+    console.error("Error tracking view:", error);
+    res.status(500).send({
+      success: false,
+      message: "Error tracking view",
+      error: error.message,
+    });
+  }
+});
+
+// Get all users (admin only)
+app.get("/all-users", async (req, res) => {
+  try {
+    const allProfiles = await profileCol.find().toArray();
+
+    // Group by email to get unique users
+    const usersMap = new Map();
+
+    allProfiles.forEach((profile) => {
+      if (!usersMap.has(profile.email)) {
+        usersMap.set(profile.email, {
+          email: profile.email,
+          name: profile.name,
+          profileCount: 1,
+          totalConnections: profile.partnerCount || 0,
+          lastActive: profile.createdAt || new Date(),
+        });
+      } else {
+        const user = usersMap.get(profile.email);
+        user.profileCount++;
+        user.totalConnections += profile.partnerCount || 0;
+      }
+    });
+
+    const users = Array.from(usersMap.values());
+
+    res.send({
+      success: true,
+      users,
+      total: users.length,
+    });
+  } catch (error) {
+    console.error("Error fetching all users:", error);
+    res.status(500).send({
+      success: false,
+      message: "Error fetching users",
+      error: error.message,
+    });
+  }
+});
+
+// Enhanced AllPartnerProfile with filters (Update existing endpoint)
+app.get("/AllPartnerProfile", async (req, res) => {
+  const {
+    sortOrder = "desc",
+    search = "",
+    mode = "",
+    experience = "",
+    availability = "",
+  } = req.query;
+
+  try {
+    let result = await profileCol.find().toArray();
+
+    // Filter by search if provided
+    if (search.trim()) {
+      result = result.filter((partner) =>
+        partner.subject.toLowerCase().includes(search.trim().toLowerCase())
+      );
+    }
+
+    // Filter by study mode
+    if (mode) {
+      result = result.filter((partner) => partner.studyMode === mode);
+    }
+
+    // Filter by experience level
+    if (experience) {
+      result = result.filter((partner) => partner.experienceLevel === experience);
+    }
+
+    // Filter by availability
+    if (availability) {
+      result = result.filter((partner) =>
+        partner.availability
+          ?.toLowerCase()
+          .includes(availability.toLowerCase())
+      );
+    }
+
+    // Add numeric experience level
+    result = result.map((partner) => ({
+      ...partner,
+      expLevelNum:
+        partner.experienceLevel === "Beginner"
+          ? 1
+          : partner.experienceLevel === "Intermediate"
+          ? 2
+          : partner.experienceLevel === "Advanced"
+          ? 3
+          : partner.experienceLevel === "Expert"
+          ? 4
+          : 0,
+    }));
+
+    // Sort by expLevelNum
+    const direction = sortOrder === "asc" ? 1 : -1;
+    result.sort((a, b) => direction * (a.expLevelNum - b.expLevelNum));
+
+    // Remove temp field
+    result = result.map(({ expLevelNum, ...rest }) => rest);
+
+    res.send(result);
+  } catch (error) {
+    console.error("Error fetching profiles:", error);
+    res.status(500).send([]);
+  }
+});
 
     // NEW ENDPOINT: Send Partner Request
     app.post("/sendPartnerRequest", async (req, res) => {
